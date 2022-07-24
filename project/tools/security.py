@@ -1,10 +1,9 @@
 import base64
 import hashlib
-import hmac
 import calendar
 import datetime
+from os import abort
 import jwt
-
 from flask import current_app
 
 
@@ -16,7 +15,6 @@ def __generate_password_digest(password: str) -> bytes:
         iterations=current_app.config["PWD_HASH_ITERATIONS"],
     )
 
-
 def generate_password_hash(password: str) -> str:
     return base64.b64encode(__generate_password_digest(password)).decode('utf-8')
 
@@ -25,37 +23,36 @@ def generate_password_hash(password: str) -> str:
 def compare_passwords_hash(password_hash, other_password) -> bool:
     return password_hash == generate_password_hash(other_password)
 
-
-
-
 class AuthsService:
-    def __int__(self, user_service):
+    def __init__(self, user_service):
         self.user_service = user_service
 
-   def generate_tokens(self, email, password, is_refresh=False):
-       user = self.user_service.get_by_email(email)
-       if user is None:
-           raise abort(404)
-       if not is_refresh:
-           if not generate_password_hash(user.password) == password:
-               abort(400)
+    @staticmethod
+    def generate_tokens(user, password, is_refresh=False):
+        if user is None:
+            raise abort(404)
 
-       data = {'email': user.email, 'password': user.password}
+        if not is_refresh:
+            if not compare_passwords_hash(user.password, password):
+                abort(404)
 
-       #15 min for access_token
-       min15 = datetime.datetime.utcnow() + datetime.timedelta(minutes=current_app.config['TOKEN_EXPIRE_MINUTES'])
-       data["exp"] = calendar.timegm(min15.timetuple())
-       access_token = jwt.encode(data, key=current_app.config['SECRET_KEY'], algorithm=current_app.config['ALGORITHM'])
+        data = {'email': user.email, 'password': user.password}
 
-       #120 days for refresh_token
-       days120 = datetime.datetime.utcnow() + datetime.timedelta(minutes=current_app.config['TOKEN_EXPIRE_DAYS'])
-       data["exp"] = calendar.timegm(days120.timetuple())
-       refresh_token = jwt.encode(data, key=current_app.config['SECRET_KEY'], algorithm=current_app.config['ALGORITHM'])
+        # 15 min for access_token
+        min15 = datetime.datetime.utcnow() + datetime.timedelta(minutes=current_app.config['TOKEN_EXPIRE_MINUTES'])
+        data["exp"] = calendar.timegm(min15.timetuple())
+        access_token = jwt.encode(data, key=current_app.config['SECRET_KEY'], algorithm=current_app.config['ALGORITHM'])
 
-       return {'access_token': access_token, 'refresh_token': refresh_token}
+        # 130 days for refresh_token
+        days130 = datetime.datetime.utcnow() + datetime.timedelta(minutes=current_app.config['TOKEN_EXPIRE_DAYS'])
+        data["exp"] = calendar.timegm(days130.timetuple())
+        refresh_token = jwt.encode(data, key=current_app.config['SECRET_KEY'], algorithm=current_app.config['ALGORITHM'])
 
-   def approve_refresh_token(self, refresh_token):
-       data = jwt.decode(jwt=refresh_token, key=current_app.config['SECRET_KEY'], algorithm=current_app.config['ALGORITHM'])
+        return {'access_token': access_token, 'refresh_token': refresh_token}
+
+
+    def approve_refresh_token(self, refresh_token):
+       data = jwt.decode(jwt=refresh_token, key=current_app.config['SECRET_KEY'], algorithms=[current_app.config['ALGORITHM']])
        email = data.get('email')
 
        return self.generate_tokens(email, None, is_refresh=True)

@@ -1,8 +1,6 @@
 from typing import Optional, List
-
 from sqlalchemy import desc
 from werkzeug.exceptions import NotFound
-
 from project.dao.base import BaseDAO, T
 from project.models import *
 from project.tools.security import generate_password_hash
