@@ -31,9 +31,9 @@ class User(models.Base):
     __tablename__ = 'users'
 
     email = Column(String(100), unique=True, nullable=False)
-    password = Column(String(200), unique=True, nullable=False)
-    name = Column(String(100), unique=True, nullable=False)
-    surname = Column(String(100), unique=True, nullable=False)
+    password = Column(String(200), nullable=False)
+    name = Column(String(100))
+    surname = Column(String(100))
     favourite_genre = Column(Integer, ForeignKey(f'{Genre.__tablename__}.id'), nullable=False)
     genre = relationship("Genre")
 
