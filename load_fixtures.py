@@ -1,8 +1,6 @@
 from contextlib import suppress
 from typing import Any, Dict, List, Type
-
 from sqlalchemy.exc import IntegrityError
-
 from project.config import config
 from project.models import Genre, Movie, Director
 from project.server import create_app
